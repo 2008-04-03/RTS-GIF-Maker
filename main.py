@@ -7,8 +7,8 @@ import os
 from tqdm import tqdm
 import shutil
 
-date_start = "2023-09-05 17:30:40"
-date_end = "2023-09-05 17:35:00"
+date_start = "2024-11-16 17:30:40"
+date_end = "2024-11-16 17:35:00"
 
 datetime_start = datetime.strptime(date_start, "%Y-%m-%d %H:%M:%S")
 datetime_end = datetime.strptime(date_end, "%Y-%m-%d %H:%M:%S")
@@ -29,7 +29,7 @@ if not os.path.exists("./images"):
 with tqdm(total=_t, desc="進度") as pbar:
     for t in range(_t):
         response = requests.get(
-            "https://exptech.com.tw/api/v1/trem/rts-image?time={}".format(timestamp_ms_start + t * 1000))
+            "https://api-2.exptech.dev/api/v1/trem/rts-image?time={}".format(timestamp_ms_start + t * 1000))
         if response.status_code == 200:
             result_image = raw.copy()
             image_data = BytesIO(response.content)
