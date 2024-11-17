@@ -29,7 +29,7 @@ if not os.path.exists("./images"):
 with tqdm(total=_t, desc="進度") as pbar:
     for t in range(_t):
         response = requests.get(
-            f"https://api-2.exptech.dev/api/v1/trem/rts-image?time={timestamp_ms_start + t * 1000}")
+            f"https://api-2.exptech.dev/api/v1/trem/rts-image/{timestamp_ms_start + t * 1000}")
         if response.status_code == 200:
             result_image = raw.copy()
             image_data = BytesIO(response.content)
