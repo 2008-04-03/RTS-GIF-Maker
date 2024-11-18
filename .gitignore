@@ -1,3 +1,5 @@
 /venv
 /images
 output.gif
+*.zip
+*.json
