@@ -7,14 +7,20 @@ import os
 from tqdm import tqdm
 import shutil
 
-date_start = "2024-11-16 17:30:40"
-date_end = "2024-11-16 17:30:45"
+unix_time = None
 
-datetime_start = datetime.strptime(date_start, "%Y-%m-%d %H:%M:%S")
-datetime_end = datetime.strptime(date_end, "%Y-%m-%d %H:%M:%S")
+while unix_time is None:
+    unix_time = input("請輸入時間戳: ")
+    try:
+        unix_time = int(unix_time)
+    except ValueError:
+        print("請輸入有效的整數時間戳")
 
-timestamp_ms_start = int(datetime_start.timestamp() * 1000)
-timestamp_ms_end = int(datetime_end.timestamp() * 1000)
+timestamp_ms_start = unix_time - 10000
+timestamp_ms_end = unix_time + 240000
+
+print(f"開始時間: {datetime.fromtimestamp(timestamp_ms_start/1000).strftime('%Y-%m-%d %H:%M:%S')} ({timestamp_ms_start})")
+print(f"結束時間: {datetime.fromtimestamp(timestamp_ms_end/1000).strftime('%Y-%m-%d %H:%M:%S')} ({timestamp_ms_end})")
 
 raw = Image.open("./rts-image.png")
 
@@ -28,21 +34,34 @@ if not os.path.exists("./images"):
 
 with tqdm(total=_t, desc="進度") as pbar:
     for t in range(_t):
-        response = requests.get(
-            f"https://api-2.exptech.dev/api/v1/trem/rts-image/{timestamp_ms_start + t * 1000}")
-        if response.status_code == 200:
-            result_image = raw.copy()
-            image_data = BytesIO(response.content)
-            variable_img = Image.open(image_data)
-            variable_img = variable_img.convert("RGBA")
-            result_image = Image.alpha_composite(result_image, variable_img)
-            result_image.save(
-                f"./images/{timestamp_ms_start + t * 1000}.png", format="PNG")
-        else:
-            print(
-                f"Failed to download image at timestamp {timestamp_ms_start + t * 1000}")
-        time.sleep(0.5)
+        timestamp = timestamp_ms_start + t * 1000
+        
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                response = requests.get(
+                    f"https://api-1.exptech.dev/api/v1/trem/rts-image/{timestamp}",
+                )
+                
+                if response.status_code == 200:
+                    result_image = raw.copy()
+                    image_data = BytesIO(response.content)
+                    variable_img = Image.open(image_data)
+                    variable_img = variable_img.convert("RGBA")
+                    result_image = Image.alpha_composite(result_image, variable_img)
+                    result_image.save(f"./images/{timestamp}.png", format="PNG")
+                    break
+                else:
+                    print(f"請求失敗，狀態碼: {response.status_code}，時間戳: {timestamp}")
+                    break
+            except Exception as e:
+                print(f"處理時間戳 {timestamp} 時發生錯誤: {e}")
+                
         pbar.update(1)
+        
+        time.sleep(0.1)
 
 def prepare_for_gif(im):
     rgba = im.convert('RGBA')
@@ -67,13 +86,13 @@ def create_gif(image_folder, output_path):
     
     try:
         images[0].save(
-            output_path,
-            save_all=True,
-            append_images=images[1:],
-            duration=100,
-            loop=0,
-            transparency=255,
-            disposal=2
+            output_path, # GIF檔案的儲存路徑
+            save_all=True, # 設為True表示儲存所有圖片幀，而不是只儲存第一幀
+            append_images=images[1:], # 將第二幀開始的所有圖片附加到GIF中
+            duration=200, # 每一幀的顯示時間（單位：毫秒）
+            loop=0, # 循環次數：0表示無限循環，1表示播放一次，n表示循環n次
+            transparency=255, # 設定透明色的索引值（255通常用於完全透明）
+            disposal=2 # 幀處理方法：0 = 不處理 | 1 = 保留上一幀 | 2 = 恢復到背景色（最常用）| 3 = 恢復到上一幀
         )
         print(f"GIF successfully created at {output_path}")
     except Exception as e:
@@ -81,5 +100,19 @@ def create_gif(image_folder, output_path):
         raise
     
     return output_path
+
+def verify_image_sequence(image_folder, start_time, end_time, interval=1000):
+    missing_timestamps = []
+    current = start_time
+    while current <= end_time:
+        if not os.path.exists(f"{image_folder}/{current}.png"):
+            missing_timestamps.append(current)
+        current += interval
+    return missing_timestamps
+
+missing = verify_image_sequence("./images", timestamp_ms_start, timestamp_ms_end)
+if missing:
+    print(f"警告：發現 {len(missing)} 個缺失的時間戳")
+    print(f"第一個缺失的時間戳: {datetime.fromtimestamp(missing[0]/1000)}")
 
 create_gif("./images", "output.gif")
