@@ -122,6 +122,9 @@ def main():
         return p_img
 
     def create_gif(image_folder, output_path):
+        if os.path.exists(output_path):
+            os.remove(output_path)
+
         file_list = sorted(os.listdir(image_folder))
         images = []
         
@@ -143,7 +146,7 @@ def main():
             )
             print(f"GIF successfully created at {output_path}")
             
-            webhook_url = "https://discord.com/api/webhooks/1278641022296920085/48jAPeaWKsCzYQ5oYau75M88YZZp4lLBWfPP_6ZfRol-HBVlP5FP1MOY_oc9FkeoeBxY"
+            webhook_url = ""
             with open(output_path, 'rb') as f:
                 webhook_response = requests.post(webhook_url, files={'file': f})
             if webhook_response.status_code == 200:
