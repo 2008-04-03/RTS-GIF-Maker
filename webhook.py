@@ -147,8 +147,17 @@ def main():
             print(f"GIF successfully created at {output_path}")
             
             webhook_url = ""
+            webhook_data = {
+                "username": "ExpTech | 探索科技",
+                "avatar_url": "https://i.ibb.co/9HwcdXX/Exptech.png",
+                "content": ""
+            }
             with open(output_path, 'rb') as f:
-                webhook_response = requests.post(webhook_url, files={'file': f})
+                files = {
+                    'file': ('output.gif', f)
+                }
+                webhook_response = requests.post(webhook_url, data=webhook_data, files=files)
+            
             if webhook_response.status_code == 200:
                 print(f"webhook 發送成功")
             else:
