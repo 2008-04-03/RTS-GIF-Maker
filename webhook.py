@@ -122,6 +122,9 @@ def main():
         return p_img
 
     def create_gif(image_folder, output_path):
+        if os.path.exists(output_path):
+            os.remove(output_path)
+
         file_list = sorted(os.listdir(image_folder))
         images = []
         
