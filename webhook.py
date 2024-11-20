@@ -31,16 +31,24 @@ if not os.path.exists("first_5_timestamp.json"):
     with open("first_5_timestamp.json", "w") as f:
         json.dump(get_first_5_timestamp(), f, ensure_ascii=False, indent=4)
 
-first_5_timestamp = None
+first_5_timestamp = get_first_5_timestamp()
 
 raw = Image.open("./rts-image.png")
 
 def cleanup():
     if os.path.exists("./images"):
         shutil.rmtree("./images")
-atexit.register(cleanup)
+        os.makedirs("./images")
+
+def cleanup2():
+    if os.path.exists("./images"):
+        shutil.rmtree("./images")
+
+atexit.register(cleanup2)
 
 cleanup()
+
+debug = False
 
 if not os.path.exists("./images"):
     os.makedirs("./images")
@@ -107,7 +115,6 @@ def main():
                     print(f"處理時間戳 {timestamp} 時發生錯誤: {e}")
                     
             pbar.update(1)
-            
             time.sleep(0.1)
 
     def prepare_for_gif(im):
@@ -119,20 +126,32 @@ def main():
         mask = Image.eval(alpha, lambda a: 255 if a < 128 else 0)
         p_img.paste(255, mask)
         
+        if debug:
+            print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} 已處理 prepare_for_gif")
         return p_img
 
     def create_gif(image_folder, output_path):
         if os.path.exists(output_path):
+            if debug:
+                print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} 正在刪除舊的 GIF")
             os.remove(output_path)
+            if debug:
+                print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} 已刪除舊的 GIF")
 
         file_list = sorted(os.listdir(image_folder))
         images = []
+        
+        if debug:
+            print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} debug 1")
         
         for filename in file_list:
             img_path = os.path.join(image_folder, filename)
             img = Image.open(img_path)
             prepared_img = prepare_for_gif(img)
             images.append(prepared_img)
+        
+        if debug:
+            print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} debug 2")
 
         try:
             images[0].save(
@@ -144,7 +163,10 @@ def main():
                 transparency=255,
                 disposal=2
             )
-            print(f"GIF successfully created at {output_path}")
+            
+            if debug:
+                print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} debug 3")
+                print(f"GIF successfully created at {output_path}")
             
             webhook_url = ""
             webhook_data = {
@@ -152,19 +174,29 @@ def main():
                 "avatar_url": "https://i.ibb.co/9HwcdXX/Exptech.png",
                 "content": ""
             }
+            
+            if debug:
+                print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} debug 4")
+            
             with open(output_path, 'rb') as f:
                 files = {
                     'file': ('output.gif', f)
                 }
                 webhook_response = requests.post(webhook_url, data=webhook_data, files=files)
             
+            if debug:
+                print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} debug 5")
+            
             if webhook_response.status_code == 200:
                 print(f"webhook 發送成功")
             else:
                 print(f"webhook 發送失敗，狀態碼: {webhook_response.status_code}")
+            
+            if debug:
+                print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} debug 6 - create gif")
         except Exception as e:
             print(f"Error creating GIF: {e}")
-            raise
+            raise e
         
         return output_path
 
