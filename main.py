@@ -25,6 +25,7 @@ print(f"結束時間: {datetime.fromtimestamp(timestamp_ms_end/1000).strftime('%
 raw = Image.open("./rts-image.png")
 
 _t = round((timestamp_ms_end - timestamp_ms_start) / 1000)
+missing_count = 0
 
 if os.path.exists("./images"):
     shutil.rmtree("./images")
@@ -38,7 +39,8 @@ with tqdm(total=_t, desc="進度") as pbar:
         
         max_retries = 3
         retry_count = 0
-        
+        success = False
+
         while retry_count < max_retries:
             try:
                 response = requests.get(
@@ -52,15 +54,18 @@ with tqdm(total=_t, desc="進度") as pbar:
                     variable_img = variable_img.convert("RGBA")
                     result_image = Image.alpha_composite(result_image, variable_img)
                     result_image.save(f"./images/{timestamp}.png", format="PNG")
+                    success = True
                     break
                 else:
                     print(f"請求失敗，狀態碼: {response.status_code}，時間戳: {timestamp}")
                     break
             except Exception as e:
                 print(f"處理時間戳 {timestamp} 時發生錯誤: {e}")
-                
+    
+        if not success:
+            missing_count += 1
+        missing_percentage = (missing_count / _t) * 100
         pbar.update(1)
-        
         time.sleep(0.1)
 
 def prepare_for_gif(im):
@@ -112,7 +117,6 @@ def verify_image_sequence(image_folder, start_time, end_time, interval=1000):
 
 missing = verify_image_sequence("./images", timestamp_ms_start, timestamp_ms_end)
 if missing:
-    print(f"警告：發現 {len(missing)} 個缺失的時間戳")
-    print(f"第一個缺失的時間戳: {datetime.fromtimestamp(missing[0]/1000)}")
+    print(f"{len(missing)} 個缺失的時間戳 | 丟失率: {missing_percentage:.1f}%")
 
 create_gif("./images", "output.gif")

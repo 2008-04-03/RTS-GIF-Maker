@@ -71,7 +71,7 @@ def main():
 
     first_5_timestamp = got_first_5_timestamp
     unix_time = int(first_5_timestamp[0])
-    
+
     os.system("cls")
 
     latest_eq = search(int(unix_time/1000))
@@ -88,6 +88,7 @@ def main():
     print(f"結束時間: {datetime.fromtimestamp(timestamp_ms_end / 1000).strftime('%Y-%m-%d %H:%M:%S')} ({timestamp_ms_end})")
 
     _t = round((timestamp_ms_end - timestamp_ms_start) / 1000)
+    missing_count = 0
     
     with tqdm(total=_t, desc="進度") as pbar:
         for t in range(_t):
@@ -95,6 +96,7 @@ def main():
             
             max_retries = 3
             retry_count = 0
+            success = False
 
             while retry_count < max_retries:
                 try:
@@ -107,13 +109,19 @@ def main():
                         variable_img = variable_img.convert("RGBA")
                         result_image = Image.alpha_composite(result_image, variable_img)
                         result_image.save(f"./images/{timestamp}.png", format="PNG")
+                        success = True
                         break
                     else:
                         print(f"請求失敗，狀態碼: {response.status_code}，時間戳: {timestamp}")
                         break
                 except Exception as e:
                     print(f"處理時間戳 {timestamp} 時發生錯誤: {e}")
+                    retry_count += 1
                     
+            if not success:
+                missing_count += 1
+            missing_percentage = (missing_count / _t) * 100
+
             pbar.update(1)
             time.sleep(0.1)
 
@@ -172,7 +180,10 @@ def main():
             webhook_data = {
                 "username": "ExpTech | 探索科技",
                 "avatar_url": "https://i.ibb.co/9HwcdXX/Exptech.png",
-                "content": f"{datetime.fromtimestamp(unix_time / 1000).strftime('%Y-%m-%d %H:%M:%S')} (<t:{unix_time}:R>)\n檢知報告 [點我前往](<https://api-1.exptech.dev/file/trem_info.html?id={unix_time}>)"
+                "content": (
+                        f"{datetime.fromtimestamp(unix_time // 1000).strftime('%Y-%m-%d %H:%M:%S')} (<t:{unix_time // 1000}:R>)\n"
+                        f"檢知報告：[點我前往](<https://api-1.exptech.dev/file/trem_info.html?id={unix_time}>)"
+                )   
             }
             
             if debug:
@@ -211,8 +222,7 @@ def main():
 
     missing = verify_image_sequence("./images", timestamp_ms_start, timestamp_ms_end)
     if missing:
-        print(f"警告：發現 {len(missing)} 個缺失的時間戳")
-        print(f"第一個缺失的時間戳: {datetime.fromtimestamp(missing[0]/1000)}")
+        print(f"{len(missing)} 個缺失的時間戳 | 丟失率: {missing_percentage:.1f}%")
 
     create_gif("./images", "output.gif")
 
