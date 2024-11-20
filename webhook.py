@@ -172,7 +172,7 @@ def main():
             webhook_data = {
                 "username": "ExpTech | 探索科技",
                 "avatar_url": "https://i.ibb.co/9HwcdXX/Exptech.png",
-                "content": ""
+                "content": f"{datetime.fromtimestamp(unix_time / 1000).strftime('%Y-%m-%d %H:%M:%S')} (<t:{unix_time}:R>)\n檢知報告 [點我前往](<https://api-1.exptech.dev/file/trem_info.html?id={unix_time}>)"
             }
             
             if debug:
