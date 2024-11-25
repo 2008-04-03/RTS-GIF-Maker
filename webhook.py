@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+webhook = ""
 @dataclass
 class GlobalData:
     event: threading.Event = threading.Event()
@@ -287,7 +288,7 @@ class SendWebhook:
                     disposal=2
                 )
 
-                webhook_url = ""
+                webhook_url = webhook
                 webhook_data = {
                     "username": "ExpTech | 探索科技",
                     "avatar_url": "https://i.ibb.co/9HwcdXX/Exptech.png",
