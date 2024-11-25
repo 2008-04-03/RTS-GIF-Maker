@@ -18,6 +18,7 @@ from urllib3.util.retry import Retry
 webhook = ""
 name = "ExpTech | 探索科技"
 avatar = "https://i.ibb.co/9HwcdXX/Exptech.png"
+
 @dataclass
 class GlobalData:
     event: threading.Event = threading.Event()
