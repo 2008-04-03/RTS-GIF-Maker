@@ -16,6 +16,8 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 webhook = ""
+name = "ExpTech | 探索科技"
+avatar = "https://i.ibb.co/9HwcdXX/Exptech.png"
 @dataclass
 class GlobalData:
     event: threading.Event = threading.Event()
@@ -290,8 +292,8 @@ class SendWebhook:
 
                 webhook_url = webhook
                 webhook_data = {
-                    "username": "ExpTech | 探索科技",
-                    "avatar_url": "https://i.ibb.co/9HwcdXX/Exptech.png",
+                    "username": name,
+                    "avatar_url": avatar,
                     "content": (
                             f"{datetime.fromtimestamp(unix_time // 1000).strftime('%Y-%m-%d %H:%M:%S')} (<t:{unix_time // 1000}:R>)\n"
                             f"檢知報告：[點我前往](<https://api-2.exptech.dev/file/trem_info.html?id={unix_time}>)"
