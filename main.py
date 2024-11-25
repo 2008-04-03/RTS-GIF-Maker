@@ -6,6 +6,21 @@ import time
 import os
 from tqdm import tqdm
 import shutil
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+def log(msg: str, type_: int = 1) -> None:
+    if type_ == 1:  # Info
+        color_code = "92"  # Bright Green
+        type_str = "Info"
+    elif type_ == 2:  # Warn
+        color_code = "93"  # Bright Yellow
+        type_str = "Warn"
+    else:  # Error
+        color_code = "91"  # Bright Red
+        type_str = "Error"
+
+    print(f"\033[{color_code}m[{type_str}][{time.strftime('%Y/%m/%d %H:%M:%S')}]: {msg}\033[0m")
 
 unix_time = None
 
@@ -14,13 +29,13 @@ while unix_time is None:
     try:
         unix_time = int(unix_time)
     except ValueError:
-        print("請輸入有效的整數時間戳")
+        log("請輸入有效的整數時間戳", 3)
 
 timestamp_ms_start = unix_time - 10000
 timestamp_ms_end = unix_time + 240000
 
-print(f"開始時間: {datetime.fromtimestamp(timestamp_ms_start/1000).strftime('%Y-%m-%d %H:%M:%S')} ({timestamp_ms_start})")
-print(f"結束時間: {datetime.fromtimestamp(timestamp_ms_end/1000).strftime('%Y-%m-%d %H:%M:%S')} ({timestamp_ms_end})")
+log(f"開始時間: {datetime.fromtimestamp(timestamp_ms_start/1000).strftime('%Y-%m-%d %H:%M:%S')} ({timestamp_ms_start})")
+log(f"結束時間: {datetime.fromtimestamp(timestamp_ms_end/1000).strftime('%Y-%m-%d %H:%M:%S')} ({timestamp_ms_end})")
 
 raw = Image.open("./rts-image.png")
 
@@ -33,6 +48,18 @@ if os.path.exists("./images"):
 if not os.path.exists("./images"):
     os.makedirs("./images")
 
+# 修改session建立部分
+session = requests.Session()
+retry_strategy = Retry(
+    total=3,
+    backoff_factor=1,
+    status_forcelist=[429, 500, 502, 503, 504],
+    allowed_methods=["GET"]
+)
+adapter = HTTPAdapter(max_retries=retry_strategy)
+session.mount("https://", adapter)
+session.mount("http://", adapter)
+
 with tqdm(total=_t, desc="進度") as pbar:
     for t in range(_t):
         timestamp = timestamp_ms_start + t * 1000
@@ -43,8 +70,10 @@ with tqdm(total=_t, desc="進度") as pbar:
 
         while retry_count < max_retries:
             try:
-                response = requests.get(
+                response = session.get(
                     f"https://api-1.exptech.dev/api/v1/trem/rts-image/{timestamp}",
+                    timeout=10,
+                    verify=True
                 )
                 
                 if response.status_code == 200:
@@ -57,10 +86,13 @@ with tqdm(total=_t, desc="進度") as pbar:
                     success = True
                     break
                 else:
-                    print(f"請求失敗，狀態碼: {response.status_code}，時間戳: {timestamp}")
+                    log(f"請求失敗，狀態碼: {response.status_code}，時間戳: {timestamp}", 2)
                     break
             except Exception as e:
-                print(f"處理時間戳 {timestamp} 時發生錯誤: {e}")
+                log(f"處理時間戳 {timestamp} 時發生錯誤: {e}", 3)
+                retry_count += 1
+                if retry_count < max_retries:
+                    time.sleep(1 * retry_count)  # 漸進式延遲
     
         if not success:
             missing_count += 1
@@ -80,6 +112,9 @@ def prepare_for_gif(im):
     return p_img
 
 def create_gif(image_folder, output_path):
+    if os.path.exists(output_path):
+        os.remove(output_path)
+        
     file_list = sorted(os.listdir(image_folder))
     images = []
     
@@ -91,20 +126,18 @@ def create_gif(image_folder, output_path):
     
     try:
         images[0].save(
-            output_path, # GIF檔案的儲存路徑
-            save_all=True, # 設為True表示儲存所有圖片幀，而不是只儲存第一幀
-            append_images=images[1:], # 將第二幀開始的所有圖片附加到GIF中
-            duration=200, # 每一幀的顯示時間（單位：毫秒）
-            loop=0, # 循環次數：0表示無限循環，1表示播放一次，n表示循環n次
-            transparency=255, # 設定透明色的索引值（255通常用於完全透明）
-            disposal=2 # 幀處理方法：0 = 不處理 | 1 = 保留上一幀 | 2 = 恢復到背景色（最常用）| 3 = 恢復到上一幀
+            output_path,
+            save_all=True,
+            append_images=images[1:],
+            duration=200,
+            loop=0,
+            transparency=255,
+            disposal=2
         )
-        print(f"GIF successfully created at {output_path}")
+        print(f"成功創建GIF於 {output_path}")
     except Exception as e:
-        print(f"Error creating GIF: {e}")
+        print(f"創建GIF時發生錯誤: {e}")
         raise
-    
-    return output_path
 
 def verify_image_sequence(image_folder, start_time, end_time, interval=1000):
     missing_timestamps = []
@@ -117,6 +150,17 @@ def verify_image_sequence(image_folder, start_time, end_time, interval=1000):
 
 missing = verify_image_sequence("./images", timestamp_ms_start, timestamp_ms_end)
 if missing:
-    print(f"{len(missing)} 個缺失的時間戳 | 丟失率: {missing_percentage:.1f}%")
+    log(f"{len(missing)} 個缺失的時間戳 | 丟失率: {missing_percentage:.1f}%", 2)
 
-create_gif("./images", "output.gif")
+try:
+    create_gif("./images", "output.gif")
+    log("成功創建GIF於 output.gif", 1)
+except Exception as e:
+    log(f"創建GIF時發生錯誤: {e}", 3)
+
+# 清理臨時文件
+for filename in os.listdir("./images"):
+    if filename.endswith(".png"):
+        file_path = os.path.join("./images", filename)
+        os.remove(file_path)
+log("已清理所有臨時PNG文件", 1)
