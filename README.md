@@ -17,7 +17,8 @@
 - [webhook.py](https://github.com/2008-04-03/RTS-GIF-Maker/blob/v1/webhook.py) 自動抓取 [ExpTech | 探索科技](https://github.com/ExpTechTW) 檢知報告api 生成 `GIF` 並使用 `webhook` 發送到 `discord`
 > [!WARNING]
 > 開啟 [webhook.py](https://github.com/2008-04-03/RTS-GIF-Maker/blob/v1/webhook.py) 時，會在相同路徑生成名為 `first_5_timestamp.json` 記錄最後五筆ID
-## 貢獻者ㄆ
+
+## 貢獻者
 - whes1015 `文檔`
 
 ------
